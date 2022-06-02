@@ -1,6 +1,6 @@
 ## Malloc Dynamic Memory Allocator
 
-### *** Due on 00:00, June xx (Day) ***
+### *** Due on 11:59 pm, June 27 (Monday) ***
 
 ### Introduction
 This project is to implement **Malloc Dynamic Memory Allocator**. Typically, in the C programming language, the dynamic memory allocation is performed using standard library functions: `malloc()`, `realloc()`, and `free()`. Those functions are defined in `stdlib.h` library.
