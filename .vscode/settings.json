@@ -1,0 +1,15 @@
+{
+    "makefile.extensionOutputFolder": "./.vscode",
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/raonsol/sce213-project3",
+            "binaryPath": "/home/raonsol/sce213-project3/pa3",
+            "binaryArgs": []
+        }
+    ],
+    "files.associations": {
+        "*.rmd": "markdown",
+        "types.h": "c"
+    }
+}
