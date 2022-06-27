@@ -33,6 +33,23 @@ static void *bp;             // Don't modify thie line
 #define IS_LOGGING 1
 #define ALIGN(target, size) ((target - 1) / size * size + size)
 
+void print_memory_layout_console()
+{
+    if (!IS_LOGGING) return;
+    header_t *header;
+    int cnt = 0;
+
+    fprintf(stderr, "===========================\n");
+    list_for_each_entry(header, &free_list, list) {
+        cnt++;
+        fprintf(stderr, "%c %4ld %p\n", (header->free) ? 'F' : 'M', header->size, header);
+  }
+
+  fprintf(stderr, "Number of block: %d\n", cnt);
+  fprintf(stderr, "===========================\n");
+  return;
+}
+
 header_t *new_alloc(size_t size) {
   header_t *p = sbrk(0); // get end of current heap
   if(IS_LOGGING) fprintf(stderr, "Allocate %zu new bytes on %p\n", size, p);
@@ -52,11 +69,13 @@ header_t *new_alloc(size_t size) {
     INIT_LIST_HEAD(&free_list);
   list_add_tail(&p->list, &free_list);
 
+  if(IS_LOGGING) fprintf(stderr, "End point: %p\n", sbrk(0));
   return p;
 }
 
 header_t *split_free(header_t *p, size_t size){
-  header_t *new_p = (header_t*)((char *)p + size);
+  if(IS_LOGGING) fprintf(stderr, "Split %p from %zu to %zu\n", p, p->size, size);
+  header_t *new_p = (header_t *)((char *)p + size);
   new_p->size = p->size - size - HDRSIZE;
   new_p->free = true;
   list_add(&new_p->list, &p->list);
@@ -65,36 +84,38 @@ header_t *split_free(header_t *p, size_t size){
 }
 
 void merge_prev(header_t *p){
-    if (list_is_last(&p->list, &free_list) ||
-        p == list_first_entry(&free_list, header_t, list))
+    if (p == list_first_entry(&free_list, header_t, list)){
+        if (IS_LOGGING) fprintf(stderr, "Abort merge %p with %p(prev)\n", p, list_first_entry(&free_list, header_t, list));
         return;
+    }
 
     header_t *cur = list_prev_entry(p, list);
     if (cur->free) {
         if (IS_LOGGING) fprintf(stderr, "Merge %p with %p(prev)\n", p, cur);
-        p->size += cur->size + HDRSIZE;
-        list_del(&cur->list);
+        cur->size += p->size + HDRSIZE;
+        list_del(&p->list);
+        merge_prev(cur);
     }
-  // merge_prev(p);
 }
 
 void merge_next(header_t *p){
-  if (list_is_last(&p->list, &free_list) ||
-        p == list_last_entry(&free_list, header_t, list))
-    return;
-
+  if (list_is_last(&p->list, &free_list)){
+        if (IS_LOGGING) fprintf(stderr, "Abort merge %p (next)\n", p);
+        return;
+  }
   header_t *cur = list_next_entry(p, list);
   if(cur->free) {
       if (IS_LOGGING) fprintf(stderr, "Merge %p with %p(next)\n", p, cur);
       p->size += cur->size + HDRSIZE;
       list_del(&cur->list);
+      merge_next(p);
   }
-  // merge_next(p);
 }
 
 void merge_free(header_t *p) {
-  merge_prev(p);
+  if (IS_LOGGING) fprintf(stderr, "Merge start %p\n", p);
   merge_next(p);
+  merge_prev(p);
 }
 
 /***********************************************************************
@@ -143,6 +164,7 @@ void *my_malloc(size_t size)
         target = new_alloc(act_size);
         if (!target) return NULL;
       } else {
+          if(IS_LOGGING) fprintf(stderr, "Allocate existing block %p\n", target);
           target->free = false;
       }
   }
@@ -198,7 +220,8 @@ void my_free(void *ptr)
   p->free = true;
   if(IS_LOGGING) fprintf(stderr, "Free block(size: %lu) on %p\n", p->size, p);
   merge_free(p);
-
+  if (IS_LOGGING) fprintf(stderr, "End Free %p\n", p);
+  // print_memory_layout_console();
   return;
 }
 
@@ -239,5 +262,6 @@ void print_memory_layout()
 
   printf("Number of block: %d\n", cnt);
   printf("===========================\n");
+  print_memory_layout_console();
   return;
 }
