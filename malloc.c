@@ -121,7 +121,7 @@ header_t *new_alloc(size_t size) {
 header_t *split_block(header_t *p, size_t size){
   if(IS_LOGGING) fprintf(stderr, "Split %p from %zu to %zu\n", p, p->size, size);
 
-  header_t *new_p = (header_t *)((char *)p + size);
+  header_t *new_p = (header_t *)((char *)p + HDRSIZE + size);
   new_p->size = p->size - size - HDRSIZE;
   new_p->free = true;
 
@@ -225,7 +225,10 @@ void *my_realloc(void *ptr, size_t size)
   void *new_p;
   if(IS_LOGGING) fprintf(stderr, "Reallocate %p from %zu to %zu bytes\n", head_before, head_before->size, act_size);
 
-  if (act_size < (head_before->size + HDRSIZE)) {
+  if (head_before->size == act_size) {
+      if (IS_LOGGING) fprintf(stderr, "Skip realloc\n");
+      new_p = ptr;
+  } else if (act_size < (head_before->size + HDRSIZE)) {
       new_p = (char *)split_block(head_before, act_size) + HDRSIZE;
       header_t *head_new = (header_t *)((char *)new_p - HDRSIZE);
 
@@ -237,7 +240,7 @@ void *my_realloc(void *ptr, size_t size)
       header_t *head_new = (header_t *)((char *)new_p - HDRSIZE);
 
       if(IS_LOGGING) fprintf(stderr, "Reallocated %zu bytes from %p to %p\n", act_size, head_before, head_new);
-      print_memory_layout_console();
+      // print_memory_layout_console();
       copy_block(head_before, head_new);
       // print_memory_layout_console();
       my_free(ptr);
