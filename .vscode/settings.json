@@ -3,9 +3,12 @@
     "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
     "makefile.launchConfigurations": [
         {
+            "name": "test-short2-best",
             "cwd": "/home/raonsol/sce213-project3",
             "binaryPath": "/home/raonsol/sce213-project3/pa3",
-            "binaryArgs": []
+            "binaryArgs": ["best", "<", "test_cases/short2.rep", ">", "outputs/short2-best-answer.txt"],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin",
         }
     ],
     "files.associations": {
