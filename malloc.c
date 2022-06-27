@@ -30,7 +30,7 @@ static LIST_HEAD(free_list); // Don't modify this line
 static algo_t g_algo;        // Don't modify this line
 static void *bp;             // Don't modify thie line
 
-#define IS_LOGGING 0
+#define IS_LOGGING 1
 #define ALIGN(target, size) ((target - 1) / size * size + size)
 
 void print_memory_layout_console()
@@ -118,14 +118,24 @@ header_t *new_alloc(size_t size) {
   return p;
 }
 
-header_t *split_free(header_t *p, size_t size){
+header_t *split_block(header_t *p, size_t size){
   if(IS_LOGGING) fprintf(stderr, "Split %p from %zu to %zu\n", p, p->size, size);
+
   header_t *new_p = (header_t *)((char *)p + size);
   new_p->size = p->size - size - HDRSIZE;
   new_p->free = true;
+
   list_add(&new_p->list, &p->list);
   p->size = size;
   return p;
+}
+
+void copy_block(header_t *before, header_t *after){
+  if(IS_LOGGING) fprintf(stderr, "Copy data from %p to %p\n", before, after);
+    char *p_before = (char *)before + HDRSIZE;
+    char *p_after = (char *)after + HDRSIZE;
+    for (size_t i = 0; i < before->size;i++)
+        p_after[i] = p_before[i];
 }
 
 /***********************************************************************
@@ -181,7 +191,7 @@ void *my_malloc(size_t size)
 
   // split block if it is too big
   if (target->size > act_size + HDRSIZE) {
-      target = split_free(target, act_size);
+      target = split_block(target, act_size);
   }
 
   new_p = (char *)target + HDRSIZE;
@@ -204,14 +214,35 @@ void *my_malloc(size_t size)
 void *my_realloc(void *ptr, size_t size)
 {
   /* Implement this function */
+  // if size<(block_size+HDRSIZE): split block
+  // else:
+  //  새로운 블록 할당
+  //  데이터 복사
+  //  기존 블록 free
 
-  // header_t *p;
-  // // add to the free_list
-  // if (list_empty(&free_list))
-  //   INIT_LIST_HEAD(&free_list);
-  // list_add_tail(&p->list, &free_list);
+  header_t *head_before = (header_t *)((char *)ptr - HDRSIZE);
+  size_t act_size = ALIGN(size, ALIGNMENT);
+  void *new_p;
+  if(IS_LOGGING) fprintf(stderr, "Reallocate %p from %zu to %zu bytes\n", head_before, head_before->size, act_size);
 
-  return NULL;
+  if (act_size < (head_before->size + HDRSIZE)) {
+      new_p = (char *)split_block(head_before, act_size) + HDRSIZE;
+      header_t *head_new = (header_t *)((char *)new_p - HDRSIZE);
+
+      if(IS_LOGGING) fprintf(stderr, "Splited to %zu bytes on %p\n", act_size, head_new);
+
+  } else {
+      new_p = my_malloc(act_size);
+      if (!new_p) return NULL;
+      header_t *head_new = (header_t *)((char *)new_p - HDRSIZE);
+
+      if(IS_LOGGING) fprintf(stderr, "Reallocated %zu bytes from %p to %p\n", act_size, head_before, head_new);
+      print_memory_layout_console();
+      copy_block(head_before, head_new);
+      // print_memory_layout_console();
+      my_free(ptr);
+  }
+  return new_p;
 }
 
 /***********************************************************************
@@ -224,7 +255,6 @@ void my_free(void *ptr)
 {
   /* Implement this function */
   // TODO: check if *ptr is in the heap
-  // TODO: increase size if last block is free
   header_t *p = (header_t *)((char *)ptr - HDRSIZE);
   p->free = true;
   if(IS_LOGGING) fprintf(stderr, "Free block(size: %lu) on %p\n", p->size, p);
