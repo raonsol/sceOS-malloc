@@ -2,3 +2,4 @@
 *.o
 pa3
 *answer.txt
+*.log
